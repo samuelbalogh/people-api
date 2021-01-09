@@ -68,8 +68,10 @@ SQL_GET_ALL_PEOPLE_FREE_TEXT_SEARCH= sql.text(f"""
     {SQL_STATIC_CTE_PARTS}
 """)
 
+
 SQL_INSERT_NODE = sql.text("INSERT INTO nodes (properties) VALUES (:properties) RETURNING *")
 SQL_INSERT_EDGE = sql.text("INSERT INTO edges (tail_node, head_node, label) VALUES (:tail_node, :head_node, :label)")
+SQL_DELETE_NODE = sql.text("""DELETE FROM nodes WHERE id = :id""")
 
 parser = reqparse.RequestParser()
 parser.add_argument('name')
@@ -104,6 +106,10 @@ class Person(Resource):
 
         with db.begin() as connection:
             pass
+
+    def delete(self, person_id):
+        with db.begin() as connection:
+            res = connection.execute(SQL_DELETE_PERSON, id=person_id)
 
 
 class People(Resource):
