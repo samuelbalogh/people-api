@@ -16,7 +16,9 @@ api = Api(app)
 @app.after_request
 def after_request(response):
     header = response.headers
-    header['Access-Control-Allow-Origin'] = '*'
+    header['Access-Control-Allow-Origin'] = "*"
+    header["Access-Control-Allow-Headers"] = "*"
+    header["Access-Control-Allow-Methods"] = "*"
     return response
 
 # TODO this is for local dev - to be removed later
