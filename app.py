@@ -164,6 +164,8 @@ class Relationships(Resource):
             edge = connection.execute(SQL_INSERT_EDGE, tail_node=tail_node, head_node=head_node, label=label)
 
         res = [i for i in edge][0]
+        res = dict(res)
+        res['id'] = str(res['id'])
 
         return res, 201
 
