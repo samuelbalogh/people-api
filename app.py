@@ -173,6 +173,11 @@ class Relationships(Resource):
         res = [i for i in edge][0]
         res = dict(res)
         res['id'] = str(res['id'])
+        res['from'] = str(res['tail_node'])
+        res['to'] = str(res['head_node'])
+        res['id'] = str(res['id'])
+
+        breakpoint()
 
         return res, 201
 
