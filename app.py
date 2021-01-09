@@ -3,14 +3,7 @@ import os
 from sqlalchemy import (
     create_engine,
     sql,
-    Table,
-    MetaData,
-    Column,
-    String,
-    ForeignKey,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSON
-
 from uuid import UUID as pyUUID
 
 from flask import Flask
@@ -32,8 +25,8 @@ db_string = os.getenv("DATABASE_URL") or db_string
 
 db = create_engine(db_string)
 
-metadata = MetaData()
-
+# TODO don't think I need this
+"""
 nodes = Table('nodes', metadata,
     Column('id', UUID, primary_key=True),
     Column('properties', JSON)
@@ -45,6 +38,7 @@ edges = Table('edges', metadata,
     Column('label', String),
     Column('properties', JSON),
 )
+"""
 
 # These CTEs are reused in each query and are not parametrized, hence they are safe to be passed as a format string param
 SQL_STATIC_CTE_PARTS = """
@@ -64,38 +58,31 @@ SQL_STATIC_CTE_PARTS = """
 
 
 SQL_GET_PERSON_BY_NAME = sql.text(f"""
-    WITH
-        people AS (
-            SELECT id, properties FROM nodes WHERE properties->>'name' = :name
-        ),
-        {SQL_STATIC_CTE_PARTS}
+    WITH people AS (SELECT id, properties FROM nodes WHERE properties->>'name' = :name), {SQL_STATIC_CTE_PARTS}
 """)
 
 SQL_GET_PERSON_BY_ID = sql.text(f"""
-    with
-        people as (
-            select id, properties from nodes where id = :id
-        ), 
-        {SQL_STATIC_CTE_PARTS}
+    WITH people as (select id, properties from nodes where id = :id), {SQL_STATIC_CTE_PARTS}
 ;""")
 
 
 SQL_GET_ALL_PEOPLE = sql.text(f"""
-    WITH
-        people AS (
-            SELECT id, properties FROM nodes
-        ),
-       {SQL_STATIC_CTE_PARTS}
+    WITH people AS (SELECT id, properties FROM nodes), {SQL_STATIC_CTE_PARTS}
        """)
 
-
 SQL_GET_ALL_PEOPLE_FREE_TEXT_SEARCH= sql.text(f"""
-    WITH
-        people AS (
-            SELECT id, properties FROM nodes join json_each_text(nodes.properties) props ON True WHERE props.value ilike :search_term
-        ),
-       {SQL_STATIC_CTE_PARTS}
+    WITH people AS (SELECT id, properties FROM nodes join json_each_text(nodes.properties) props ON True WHERE props.value ilike :search_term), {SQL_STATIC_CTE_PARTS}
 """)
+
+SQL_INSERT = sql.text("""
+    INSERT INTO nodes VALUES 
+""")
+
+parser = reqparse.RequestParser()
+parser.add_argument('name')
+parser.add_argument('search')
+parser.add_argument('properties', type=dict, location='json')
+parser.add_argument('relationships', type=dict, location='json')
 
 
 class Person(Resource):
@@ -109,21 +96,17 @@ class Person(Resource):
                 if isinstance(value, pyUUID):
                     item[key] = str(value)
 
-        return results
+        return results[0]
 
     def put(self, person_id):
         arguments = parser.parse_args()
         
         with db.begin() as connection:
-            stmt = sql.insert([nodes])
+            pass
 
 
 class People(Resource):
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('name')
-        parser.add_argument('search')
-
         arguments = parser.parse_args()
         name = arguments.get('name')
         search = arguments.get('search')
@@ -136,7 +119,6 @@ class People(Resource):
             else:
                 res = connection.execute(SQL_GET_ALL_PEOPLE)
 
-
         results = [dict(i) for i in res]
         for item in results:
             for key, value in item.items():
@@ -145,9 +127,14 @@ class People(Resource):
 
         return results
 
-
     def post(self):
-        pass
+        arguments = parser.parse_args()
+        properties = arguments.get('properties')
+        relationships = arguments.get('relationships')
+
+
+
+        breakpoint()
 
 
 api.add_resource(Person, '/people/<person_id>')
