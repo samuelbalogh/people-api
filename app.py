@@ -1,4 +1,5 @@
 import os
+import json
 
 from sqlalchemy import (
     create_engine,
@@ -74,15 +75,18 @@ SQL_GET_ALL_PEOPLE_FREE_TEXT_SEARCH= sql.text(f"""
     WITH people AS (SELECT id, properties FROM nodes join json_each_text(nodes.properties) props ON True WHERE props.value ilike :search_term), {SQL_STATIC_CTE_PARTS}
 """)
 
-SQL_INSERT = sql.text("""
-    INSERT INTO nodes VALUES 
-""")
+SQL_INSERT_NODE = sql.text("INSERT INTO nodes (properties) VALUES (:properties) RETURNING *")
+SQL_INSERT_EDGE = sql.text("INSERT INTO edges (tail_node, head_node, label) VALUES (:tail_node, :head_node, :label)")
 
 parser = reqparse.RequestParser()
 parser.add_argument('name')
 parser.add_argument('search')
 parser.add_argument('properties', type=dict, location='json')
 parser.add_argument('relationships', type=dict, location='json')
+
+parser.add_argument('tail_node', location='json')
+parser.add_argument('head_node', location='json')
+parser.add_argument('type', location='json')
 
 
 class Person(Resource):
@@ -100,7 +104,11 @@ class Person(Resource):
 
     def put(self, person_id):
         arguments = parser.parse_args()
-        
+
+        properties = arguments.get('properties')
+        if properties is None:
+            return
+
         with db.begin() as connection:
             pass
 
@@ -131,14 +139,35 @@ class People(Resource):
         arguments = parser.parse_args()
         properties = arguments.get('properties')
         relationships = arguments.get('relationships')
-
-
-
         breakpoint()
+
+        if relationships is not None:
+            head_node = relationships.get('id')
+            label = relationships.get('type')
+
+        with db.begin() as connection:
+            node = connection.execute(SQL_INSERT_NODE, properties=json.dumps(properties))
+            node_id = str([i for i in node][0][0])
+            if relationships is not None:
+                connection.execute(SQL_INSERT_EDGE, tail_node=node_id, head_node=head_node, label=label)
+
+
+class Relationships(Resource):
+    def post(self):
+        arguments = parser.parse_args()
+        tail_node = arguments.get('from')
+        head_node = arguments.get('to')
+        label = arguments.get('type')
+        with db.begin() as connection:
+            connection.execute(SQL_INSERT_EDGE, tail_node=tail_node, head_node=head_node, label=label)
+
+    def get(self):
+        pass
 
 
 api.add_resource(Person, '/people/<person_id>')
 api.add_resource(People, '/people/')
+api.add_resource(Relationships, '/relationships/')
 
 
 if __name__ == '__main__':
