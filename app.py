@@ -70,7 +70,7 @@ SQL_GET_ALL_PEOPLE_FREE_TEXT_SEARCH= sql.text(f"""
 
 
 SQL_INSERT_NODE = sql.text("INSERT INTO nodes (properties) VALUES (:properties) RETURNING *")
-SQL_INSERT_EDGE = sql.text("INSERT INTO edges (tail_node, head_node, label) VALUES (:tail_node, :head_node, :label)")
+SQL_INSERT_EDGE = sql.text("INSERT INTO edges (tail_node, head_node, label) VALUES (:tail_node, :head_node, :label) RETURNING *")
 SQL_DELETE_NODE = sql.text("""DELETE FROM nodes WHERE id = :id""")
 
 parser = reqparse.RequestParser()
@@ -145,9 +145,12 @@ class People(Resource):
 
         with db.begin() as connection:
             node = connection.execute(SQL_INSERT_NODE, properties=json.dumps(properties))
-            node_id = str([i for i in node][0][0])
+            node = [i for i in node][0]
+            node_id = str(node[0])
             if relationships is not None:
                 connection.execute(SQL_INSERT_EDGE, tail_node=node_id, head_node=head_node, label=label)
+
+        return node, 201
 
 
 class Relationships(Resource):
@@ -157,7 +160,11 @@ class Relationships(Resource):
         head_node = arguments.get('to')
         label = arguments.get('type')
         with db.begin() as connection:
-            connection.execute(SQL_INSERT_EDGE, tail_node=tail_node, head_node=head_node, label=label)
+            edge = connection.execute(SQL_INSERT_EDGE, tail_node=tail_node, head_node=head_node, label=label)
+
+        res = [i for i in edge][0]
+
+        return res, 201
 
     def get(self):
         pass
