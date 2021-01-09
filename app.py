@@ -46,81 +46,55 @@ edges = Table('edges', metadata,
     Column('properties', JSON),
 )
 
+# These CTEs are reused in each query and are not parametrized, hence they are safe to be passed as a format string param
+SQL_STATIC_CTE_PARTS = """
+        person_details AS (
+            SELECT people.id, people.properties, edges.label, edges.head_node FROM
+                nodes LEFT OUTER JOIN people ON nodes.id = people.id LEFT OUTER JOIN edges ON edges.tail_node = people.id
+        ),
+        results AS (
+            SELECT
+                person_details.id,
+                person_details.properties::text AS props,
+                COALESCE(json_agg(json_build_object('type', person_details.label,'name', nodes.properties->>'name', 'id', nodes.id)) FILTER (WHERE person_details.label is not null), '[]') AS outgoing_edges
+                FROM person_details LEFT OUTER JOIN NODES ON person_details.head_node = nodes.id GROUP BY 1,2
+        )
+        SELECT id, props::json, outgoing_edges FROM results WHERE id IS NOT NULL;
+"""
 
-SQL_GET_PERSON_BY_NAME = sql.text("""
+
+SQL_GET_PERSON_BY_NAME = sql.text(f"""
     WITH
         people AS (
             SELECT id, properties FROM nodes WHERE properties->>'name' = :name
         ),
-        person_details AS (
-            SELECT people.id, trim('"' FROM people.properties::text) as properties, edges.label, edges.head_node FROM
-                nodes LEFT OUTER JOIN people ON nodes.id = people.id LEFT OUTER JOIN edges ON edges.tail_node = people.id
-        ),
-        results AS (
-            SELECT
-                person_details.id,
-                person_details.properties AS props,
-                COALESCE(json_object_agg(person_details.label,
-                    json_build_object('name', nodes.properties->>'name', 'id', nodes.id)) FILTER (WHERE person_details.label is not null), '[]') AS outgoing_edges
-                FROM person_details LEFT OUTER JOIN NODES ON person_details.head_node = nodes.id 
-            GROUP BY 1,2)
-        SELECT id, props::json, outgoing_edges FROM results WHERE id IS NOT NULL;
+        {SQL_STATIC_CTE_PARTS}
 """)
 
-SQL_GET_PERSON_BY_ID = sql.text("""
+SQL_GET_PERSON_BY_ID = sql.text(f"""
     with
-        person as (
+        people as (
             select id, properties from nodes where id = :id
         ), 
-        person_details as (
-            select person.properties, nodes.*, edges.label, edges.head_node from 
-                nodes, edges, person where nodes.id = person.id and edges.tail_node = person.id
-        ) 
-        select person_details.*, nodes.properties->>'name' as head_node_name
-            from person_details, nodes 
-            where person_details.head_node = nodes.id
+        {SQL_STATIC_CTE_PARTS}
 ;""")
 
 
-SQL_GET_ALL_PEOPLE = sql.text("""
+SQL_GET_ALL_PEOPLE = sql.text(f"""
     WITH
         people AS (
             SELECT id, properties FROM nodes
         ),
-        person_details AS (
-            SELECT people.id, people.properties, edges.label, edges.head_node FROM
-                nodes LEFT OUTER JOIN people ON nodes.id = people.id LEFT OUTER JOIN edges ON edges.tail_node = people.id
-        ),
-        results AS (
-            SELECT
-                person_details.id,
-                person_details.properties::text AS props,
-                COALESCE(json_object_agg(person_details.label,
-                    json_build_object('name', nodes.properties->>'name', 'id', nodes.id)) FILTER (WHERE person_details.label is not null), '[]') AS outgoing_edges
-                FROM person_details LEFT OUTER JOIN NODES ON person_details.head_node = nodes.id GROUP BY 1,2
-        )
-        SELECT id, props::json, outgoing_edges FROM results WHERE id IS NOT NULL;
-""")
+       {SQL_STATIC_CTE_PARTS}
+       """)
 
 
-SQL_GET_ALL_PEOPLE_FREE_TEXT_SEARCH= sql.text("""
+SQL_GET_ALL_PEOPLE_FREE_TEXT_SEARCH= sql.text(f"""
     WITH
         people AS (
             SELECT id, properties FROM nodes join json_each_text(nodes.properties) props ON True WHERE props.value ilike :search_term
         ),
-        person_details AS (
-            SELECT people.id, people.properties, edges.label, edges.head_node FROM
-                nodes LEFT OUTER JOIN people ON nodes.id = people.id LEFT OUTER JOIN edges ON edges.tail_node = people.id
-        ),
-        results AS (
-            SELECT
-                person_details.id,
-                person_details.properties::text AS props,
-                COALESCE(json_object_agg(person_details.label,
-                    json_build_object('name', nodes.properties->>'name', 'id', nodes.id)) FILTER (WHERE person_details.label is not null), '[]') AS outgoing_edges
-                FROM person_details LEFT OUTER JOIN NODES ON person_details.head_node = nodes.id GROUP BY 1,2
-        )
-        SELECT id, props::json, outgoing_edges FROM results WHERE id IS NOT NULL;
+       {SQL_STATIC_CTE_PARTS}
 """)
 
 
