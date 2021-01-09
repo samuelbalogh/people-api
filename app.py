@@ -30,7 +30,8 @@ class People(Resource):
         results = [p for p in result_set]
         return results
 
-    def post(self)
+    def post(self):
+        pass
 
 
 api.add_resource(People, '/people')
