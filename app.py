@@ -29,25 +29,9 @@ DB_USER = os.getenv("DB_USER") or "people-api"
 DB_PASSWORD = os.getenv("DB_PASSWORD") or "people-api"
 
 db_string = f"postgres://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
 db_string = os.getenv("DATABASE_URL") or db_string
 
 db = create_engine(db_string)
-
-# TODO don't think I need this
-"""
-nodes = Table('nodes', metadata,
-    Column('id', UUID, primary_key=True),
-    Column('properties', JSON)
-)
-
-edges = Table('edges', metadata,
-    Column('tail_node', UUID, ForeignKey('nodes.id')),
-    Column('head_node', UUID, ForeignKey('nodes.id')),
-    Column('label', String),
-    Column('properties', JSON),
-)
-"""
 
 # These CTEs are reused in each query and are not parametrized, hence they are safe to be passed as a format string param
 SQL_STATIC_CTE_PARTS = """
@@ -80,7 +64,8 @@ SQL_GET_ALL_PEOPLE = sql.text(f"""
        """)
 
 SQL_GET_ALL_PEOPLE_FREE_TEXT_SEARCH= sql.text(f"""
-    WITH people AS (SELECT id, properties FROM nodes join json_each_text(nodes.properties) props ON True WHERE props.value ilike :search_term), {SQL_STATIC_CTE_PARTS}
+    WITH people AS (SELECT id, properties FROM nodes join json_each_text(nodes.properties) props ON True WHERE props.value ilike :search_term),
+    {SQL_STATIC_CTE_PARTS}
 """)
 
 SQL_INSERT_NODE = sql.text("INSERT INTO nodes (properties) VALUES (:properties) RETURNING *")
@@ -147,7 +132,6 @@ class People(Resource):
         arguments = parser.parse_args()
         properties = arguments.get('properties')
         relationships = arguments.get('relationships')
-        breakpoint()
 
         if relationships is not None:
             head_node = relationships.get('id')
