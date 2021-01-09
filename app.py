@@ -109,7 +109,7 @@ class Person(Resource):
 
     def delete(self, person_id):
         with db.begin() as connection:
-            res = connection.execute(SQL_DELETE_PERSON, id=person_id)
+            res = connection.execute(SQL_DELETE_NODE, id=person_id)
 
 
 class People(Resource):
