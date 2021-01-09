@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+    db: &db
+      build: .
+      command: ["postgres", "-c", "log_statement=all"]
+      ports:
+        - "5432:5432"
+      environment:
+        POSTGRES_USER: people-api
+        POSTGRES_PASSWORD: people-api
+        POSTGRES_DB: people-api
