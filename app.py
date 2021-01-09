@@ -72,6 +72,7 @@ SQL_GET_ALL_PEOPLE_FREE_TEXT_SEARCH= sql.text(f"""
 SQL_INSERT_NODE = sql.text("INSERT INTO nodes (properties) VALUES (:properties) RETURNING *")
 SQL_INSERT_EDGE = sql.text("INSERT INTO edges (tail_node, head_node, label) VALUES (:tail_node, :head_node, :label) RETURNING *")
 SQL_DELETE_NODE = sql.text("""DELETE FROM nodes WHERE id = :id""")
+SQL_UPDATE_NODE = sql.text("""UPDATE nodes SET properties = :properties WHERE id = :id RETURNING *""")
 
 parser = reqparse.RequestParser()
 parser.add_argument('name')
@@ -101,11 +102,14 @@ class Person(Resource):
         arguments = parser.parse_args()
 
         properties = arguments.get('properties')
-        if properties is None:
-            return
 
         with db.begin() as connection:
-            pass
+            res = connection.execute(SQL_UPDATE_NODE, id=person_id, properties=json.dumps(properties))
+            res = [i for i in res][0]
+            res = dict(res)
+            res['id'] = str(res['id'])
+
+        return res, 200
 
     def delete(self, person_id):
         with db.begin() as connection:
@@ -139,16 +143,14 @@ class People(Resource):
         properties = arguments.get('properties')
         relationships = arguments.get('relationships')
 
-        if relationships is not None:
-            head_node = relationships.get('id')
-            label = relationships.get('type')
-
         with db.begin() as connection:
             res = connection.execute(SQL_INSERT_NODE, properties=json.dumps(properties))
             node = [i for i in res][0]
             node = dict(node)
             node['id'] = str(node['id'])
             if relationships is not None:
+                head_node = relationships.get('id')
+                label = relationships.get('type')
                 connection.execute(SQL_INSERT_EDGE, tail_node=node['id'], head_node=head_node, label=label)
 
         return node, 201
