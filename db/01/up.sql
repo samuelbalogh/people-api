@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS nodes(
 
 CREATE TABLE IF NOT EXISTS edges(
   id UUID PRIMARY KEY UNIQUE DEFAULT uuid_generate_v4(),
-  tail_node UUID REFERENCES edges(id),
-  head_node UUID REFERENCES edges(id),
+  tail_node UUID REFERENCES nodes(id) NOT NULL,
+  head_node UUID REFERENCES nodes(id) NOT NULL,
   label TEXT,
   properties JSON
 );
