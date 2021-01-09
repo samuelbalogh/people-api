@@ -176,14 +176,15 @@ class Relationships(Resource):
         res['from'] = str(res['tail_node'])
         res['to'] = str(res['head_node'])
 
+        del res['tail_node']
+        del res['head_node']
+
         return res, 201
 
     def get(self):
         with db.begin() as connection:
             edge = connection.execute(SQL_GET_EDGE_FROM_TO_NODE, id=node_id)
         
-
-
 api.add_resource(Person, '/people/<person_id>')
 api.add_resource(People, '/people/')
 api.add_resource(Relationships, '/relationships/')
