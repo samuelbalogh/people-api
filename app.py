@@ -144,14 +144,12 @@ class People(Resource):
             label = relationships.get('type')
 
         with db.begin() as connection:
-            node = connection.execute(SQL_INSERT_NODE, properties=json.dumps(properties))
-            node = [i for i in node][0]
-            node_id = str(node[0])
-
+            res = connection.execute(SQL_INSERT_NODE, properties=json.dumps(properties))
+            node = [i for i in res][0]
             node = dict(node)
             node['id'] = str(node['id'])
             if relationships is not None:
-                connection.execute(SQL_INSERT_EDGE, tail_node=node_id, head_node=head_node, label=label)
+                connection.execute(SQL_INSERT_EDGE, tail_node=node['id'], head_node=head_node, label=label)
 
         return node, 201
 
