@@ -175,9 +175,6 @@ class Relationships(Resource):
         res['id'] = str(res['id'])
         res['from'] = str(res['tail_node'])
         res['to'] = str(res['head_node'])
-        res['id'] = str(res['id'])
-
-        breakpoint()
 
         return res, 201
 
