@@ -43,7 +43,10 @@ SQL_STATIC_CTE_PARTS = """
             SELECT
                 person_details.id,
                 person_details.properties::text AS props,
-                COALESCE(json_agg(json_build_object('type', person_details.label,'name', nodes.properties->>'name', 'id', nodes.id)) FILTER (WHERE person_details.label is not null), '[]') AS outgoing_edges
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'type', person_details.label,'name', nodes.properties->>'name', 'id', nodes.id)) FILTER (WHERE person_details.label is not null), '[]') AS outgoing_edges
                 FROM person_details LEFT OUTER JOIN NODES ON person_details.head_node = nodes.id GROUP BY 1,2
         )
         SELECT id, props::json, outgoing_edges FROM results WHERE id IS NOT NULL;
@@ -70,9 +73,11 @@ SQL_GET_ALL_PEOPLE_FREE_TEXT_SEARCH= sql.text(f"""
 
 
 SQL_INSERT_NODE = sql.text("INSERT INTO nodes (properties) VALUES (:properties) RETURNING *")
-SQL_INSERT_EDGE = sql.text("INSERT INTO edges (tail_node, head_node, label) VALUES (:tail_node, :head_node, :label) RETURNING *")
 SQL_DELETE_NODE = sql.text("""DELETE FROM nodes WHERE id = :id""")
 SQL_UPDATE_NODE = sql.text("""UPDATE nodes SET properties = :properties WHERE id = :id RETURNING *""")
+
+SQL_INSERT_EDGE = sql.text("INSERT INTO edges (tail_node, head_node, label) VALUES (:tail_node, :head_node, :label) RETURNING *")
+SQL_GET_EDGE_FROM_TO_NODE = sql.text("SELECT * FROM edges WHERE tail_node= :id or head_node = :id")
 
 parser = reqparse.RequestParser()
 parser.add_argument('name')
@@ -80,8 +85,8 @@ parser.add_argument('search')
 parser.add_argument('properties', type=dict, location='json')
 parser.add_argument('relationships', type=dict, location='json')
 
-parser.add_argument('tail_node', location='json')
-parser.add_argument('head_node', location='json')
+parser.add_argument('from', location='json')
+parser.add_argument('to', location='json')
 parser.add_argument('type', location='json')
 
 
@@ -172,7 +177,9 @@ class Relationships(Resource):
         return res, 201
 
     def get(self):
-        pass
+        with db.begin() as connection:
+            edge = connection.execute(SQL_GET_EDGE_FROM_TO_NODE, id=node_id)
+        
 
 
 api.add_resource(Person, '/people/<person_id>')
