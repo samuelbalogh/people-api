@@ -1,5 +1,7 @@
 import os
 import json
+import time
+import logging
 
 from sqlalchemy import (
     create_engine,
@@ -9,16 +11,30 @@ from uuid import UUID as pyUUID
 
 from flask import Flask
 from flask_restful import Resource, Api, reqparse
+from flask import g
 
 app = Flask(__name__)
 api = Api(app)
+
+log = logging.getLogger(__name__)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+
+@app.before_request
+def before_request():
+    g.start = time.time()
+
+@app.after_request
+def after_request(response):
+    diff = round(time.time() - g.start, 4)
+    log.info(f"request time: {diff} seconds")
+    return response
 
 @app.after_request
 def after_request(response):
     header = response.headers
     header['Access-Control-Allow-Origin'] = "*"
-    header["Access-Control-Allow-Headers"] = "Content-Type"
     header["Access-Control-Allow-Methods"] = "*"
+    header["Access-Control-Allow-Headers"] = "Content-Type"
     return response
 
 # TODO this is for local dev - to be removed later
