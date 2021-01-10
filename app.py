@@ -36,8 +36,12 @@ db = create_engine(db_string)
 # These CTEs are reused in each query and are not parametrized, hence they are safe to be passed as a format string param
 SQL_STATIC_CTE_PARTS = """
         person_details AS (
-            SELECT people.id, people.properties, edges.label, edges.head_node FROM
+            SELECT people.id, people.properties, edges.label, edges.head_node, edges.tail_node FROM
                 nodes LEFT OUTER JOIN people ON nodes.id = people.id LEFT OUTER JOIN edges ON edges.tail_node = people.id
+        ),
+        person_details2 AS (
+           SELECT people.id, people.properties, edges.label, edges.head_node, edges.tail_node FROM
+               nodes LEFT OUTER JOIN people ON nodes.id = people.id LEFT OUTER JOIN edges ON edges.head_node = people.id
         ),
         results AS (
             SELECT
@@ -46,10 +50,26 @@ SQL_STATIC_CTE_PARTS = """
                 COALESCE(
                     json_agg(
                         json_build_object(
-                            'type', person_details.label,'name', nodes.properties->>'name', 'id', nodes.id)) FILTER (WHERE person_details.label is not null), '[]') AS outgoing_edges
+                            'type', person_details.label,'name', nodes.properties->>'name', 'id', nodes.id
+                        )
+                    ) FILTER (WHERE person_details.label is not null), '[]'
+                ) AS outgoing_edges
                 FROM person_details LEFT OUTER JOIN NODES ON person_details.head_node = nodes.id GROUP BY 1,2
+        ),
+        results2 AS (
+            SELECT
+                person_details2.id,
+                person_details2.properties::text AS props,
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'type', person_details2.label,'name', nodes.properties->>'name', 'id', nodes.id
+                        )
+                    ) FILTER (WHERE person_details2.label is not null), '[]'
+                ) AS incoming_edges
+                FROM person_details2 LEFT OUTER JOIN NODES ON person_details2.tail_node = nodes.id GROUP BY 1,2
         )
-        SELECT id, props::json, outgoing_edges FROM results WHERE id IS NOT NULL;
+        SELECT results.id, results.props::json, json_build_object('out', outgoing_edges, 'in', incoming_edges) AS edges FROM results, results2 WHERE results.id IS NOT NULL and results.id  = results2.id;
 """
 
 
