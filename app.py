@@ -171,50 +171,6 @@ class Person(Resource):
             res = connection.execute(SQL_DELETE_NODE, id=person_id)
 
 
-class ComparablePerson(dict):
-    def __eq__(self, other):
-        self_conns = set(item['id'] for item in self.get_connections())
-        other_conns = set(item['id'] for item in other.get_connections())
-
-        log.debug(f"comparing {self['props']['name']} with {other['props']['name']}")
-
-        if len(self_conns.intersection(other_conns)) > 0:
-            log.debug('they are equal')
-            return True
-        else:
-            log.debug('they are not equal')
-            return False
-
-    def __gt__(self, other):
-        if self == other:
-            return False
-        if self != other:
-            self_out = self['edges']['out']
-            other_out = other['edges']['out']
-            if self_out == [] or other_out == []:
-                return False
-
-            return min([item['id'] for item in self_out]) > min([item['id'] for item in other_out])
-
-
-    def __lt__(self, other):
-        if self == other:
-            return False
-        if self != other:
-            self_out = self['edges']['out']
-            other_out = other['edges']['out']
-            if self_out == [] or other_out == []:
-                return False
-
-            return min([item['id'] for item in self_out]) < min([item['id'] for item in other_out])
-
-    def get_connections(self):
-        edges = self.get('edges')
-        incoming = edges.get('in')
-        outgoing = edges.get('out')
-
-        return incoming + outgoing
-
 
 class People(Resource):
     def get(self):
@@ -230,14 +186,12 @@ class People(Resource):
             else:
                 res = connection.execute(SQL_GET_ALL_PEOPLE)
 
-        results = [ComparablePerson(i) for i in res]
+        results = [dict(i) for i in res]
 
         for item in results:
             for key, value in item.items():
                 if isinstance(value, pyUUID):
                     item[key] = str(value)
-
-        results = sorted(results)
 
         return results
 
