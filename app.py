@@ -9,9 +9,8 @@ from sqlalchemy import (
 )
 from uuid import UUID as pyUUID
 
-from flask import Flask
+from flask import Flask, request, g
 from flask_restful import Resource, Api, reqparse
-from flask import g
 
 app = Flask(__name__)
 api = Api(app)
@@ -37,6 +36,15 @@ def after_request(response):
     header["Access-Control-Allow-Headers"] = "Content-Type"
     return response
 
+APP_SECRET = os.getenv('APP_SECRET') or 'jabberwocky'
+
+@app.before_request
+def check_api_key():
+    auth_header = 'x-people-auth'
+    if auth_header not in request.headers or request.headers[auth_header] != APP_SECRET:
+        return 'Forbidden', 401
+
+
 # TODO this is for local dev - to be removed later
 DB_HOST = os.getenv("DB_HOST") or "localhost"
 DB_NAME = os.getenv("DB_NAME") or "people-api"
@@ -51,41 +59,45 @@ db = create_engine(db_string)
 
 # These CTEs are reused in each query and are not parametrized, hence they are safe to be passed as a format string param
 SQL_STATIC_CTE_PARTS = """
-        person_details AS (
+        person_details_outgoing_edges AS (
             SELECT people.id, people.properties, edges.label, edges.head_node, edges.tail_node FROM
                 nodes LEFT OUTER JOIN people ON nodes.id = people.id LEFT OUTER JOIN edges ON edges.tail_node = people.id
         ),
-        person_details2 AS (
+        person_details_incoming_edges AS (
            SELECT people.id, people.properties, edges.label, edges.head_node, edges.tail_node FROM
                nodes LEFT OUTER JOIN people ON nodes.id = people.id LEFT OUTER JOIN edges ON edges.head_node = people.id
         ),
         results AS (
             SELECT
-                person_details.id,
-                person_details.properties::text AS props,
+                person_details_outgoing_edges.id,
+                person_details_outgoing_edges.properties::text AS props,
                 COALESCE(
                     json_agg(
                         json_build_object(
-                            'type', person_details.label,'name', nodes.properties->>'name', 'id', nodes.id
+                            'type', person_details_outgoing_edges.label,'name', nodes.properties->>'name', 'id', nodes.id
                         )
-                    ) FILTER (WHERE person_details.label is not null), '[]'
+                    ) FILTER (WHERE person_details_outgoing_edges.label is not null), '[]'
                 ) AS outgoing_edges
-                FROM person_details LEFT OUTER JOIN NODES ON person_details.head_node = nodes.id GROUP BY 1,2
+                FROM person_details_outgoing_edges LEFT OUTER JOIN NODES ON person_details_outgoing_edges.head_node = nodes.id GROUP BY 1,2
         ),
         results2 AS (
             SELECT
-                person_details2.id,
-                person_details2.properties::text AS props,
+                person_details_incoming_edges.id,
+                person_details_incoming_edges.properties::text AS props,
                 COALESCE(
                     json_agg(
                         json_build_object(
-                            'type', person_details2.label,'name', nodes.properties->>'name', 'id', nodes.id
+                            'type', person_details_incoming_edges.label,'name', nodes.properties->>'name', 'id', nodes.id
                         )
-                    ) FILTER (WHERE person_details2.label is not null), '[]'
+                    ) FILTER (WHERE person_details_incoming_edges.label is not null), '[]'
                 ) AS incoming_edges
-                FROM person_details2 LEFT OUTER JOIN NODES ON person_details2.tail_node = nodes.id GROUP BY 1,2
+                FROM person_details_incoming_edges LEFT OUTER JOIN NODES ON person_details_incoming_edges.tail_node = nodes.id GROUP BY 1,2
+        ),
+        graph AS (
+            SELECT results.id, results.props::json, json_build_object('out', outgoing_edges, 'in', incoming_edges) AS edges
+            FROM results, results2 WHERE results.id IS NOT NULL and results.id  = results2.id
         )
-        SELECT results.id, results.props::json, json_build_object('out', outgoing_edges, 'in', incoming_edges) AS edges FROM results, results2 WHERE results.id IS NOT NULL and results.id  = results2.id;
+        SELECT * FROM graph
 """
 
 
@@ -157,6 +169,38 @@ class Person(Resource):
             res = connection.execute(SQL_DELETE_NODE, id=person_id)
 
 
+class ComparablePerson(dict):
+    def __eq__(self, other):
+        self_conns = set(item['id'] for item in self.get_connections())
+        other_conns = set(item['id'] for item in other.get_connections())
+
+        log.debug(f"comparing {self['props']['name']} with {other['props']['name']}")
+
+        if len(self_conns.intersection(other_conns)) > 0:
+            log.debug('they are equal')
+            return True
+        else:
+            log.debug('they are not equal')
+            return False
+
+    def __gt__(self, other):
+        if self == other:
+            return False
+        if self != other:
+            return len(self['edges']['in']) > len(other['edges']['in'])
+
+    def __lt__(self, other):
+        if self == other:
+            return False
+        if self != other:
+            return len(self['edges']['in']) < len(other['edges']['in'])
+
+    def get_connections(self):
+        edges = self.get('edges')
+        incoming = edges.get('in')
+        outgoing = edges.get('out')
+
+        return incoming + outgoing
 
 
 class People(Resource):
@@ -173,11 +217,21 @@ class People(Resource):
             else:
                 res = connection.execute(SQL_GET_ALL_PEOPLE)
 
-        results = [dict(i) for i in res]
+        results = [ComparablePerson(i) for i in res]
+
+        for i in results:
+            print(i['props'])
+
         for item in results:
             for key, value in item.items():
                 if isinstance(value, pyUUID):
                     item[key] = str(value)
+
+        results = sorted(results)
+
+        print('sorted:')
+        for j in results:
+            print(j['props'])
 
         return results
 
