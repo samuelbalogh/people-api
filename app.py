@@ -40,6 +40,8 @@ APP_SECRET = os.getenv('APP_SECRET') or 'jabberwocky'
 
 @app.before_request
 def check_api_key():
+    if os.getenv("CHECK_AUTH") == 'false':
+        return
     auth_header = 'x-people-auth'
     if auth_header not in request.headers or request.headers[auth_header] != APP_SECRET:
         return 'Forbidden', 401
@@ -219,19 +221,12 @@ class People(Resource):
 
         results = [ComparablePerson(i) for i in res]
 
-        for i in results:
-            print(i['props'])
-
         for item in results:
             for key, value in item.items():
                 if isinstance(value, pyUUID):
                     item[key] = str(value)
 
         results = sorted(results)
-
-        print('sorted:')
-        for j in results:
-            print(j['props'])
 
         return results
 
