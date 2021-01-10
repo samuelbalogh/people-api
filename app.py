@@ -189,13 +189,24 @@ class ComparablePerson(dict):
         if self == other:
             return False
         if self != other:
-            return len(self['edges']['in']) > len(other['edges']['in'])
+            self_out = self['edges']['out']
+            other_out = other['edges']['out']
+            if self_out == [] or other_out == []:
+                return False
+
+            return min([item['id'] for item in self_out]) > min([item['id'] for item in other_out])
+
 
     def __lt__(self, other):
         if self == other:
             return False
         if self != other:
-            return len(self['edges']['in']) < len(other['edges']['in'])
+            self_out = self['edges']['out']
+            other_out = other['edges']['out']
+            if self_out == [] or other_out == []:
+                return False
+
+            return min([item['id'] for item in self_out]) < min([item['id'] for item in other_out])
 
     def get_connections(self):
         edges = self.get('edges')
