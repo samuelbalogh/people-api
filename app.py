@@ -188,12 +188,24 @@ class People(Resource):
 
         results = [dict(i) for i in res]
 
+        already_in = set()
+        sorted_results = []
+
+        ids = {str(item['id']): item for item in results}
+
         for item in results:
             for key, value in item.items():
                 if isinstance(value, pyUUID):
                     item[key] = str(value)
 
-        return results
+            if item['id'] not in already_in:
+                sorted_results.append(item)
+            for rel in item['edges']['in'] + item['edges']['out']:
+                if rel['id'] not in already_in:
+                    sorted_results.append(ids[rel['id']])
+                    already_in.add(rel['id'])
+
+        return sorted_results
 
     def post(self):
         arguments = parser.parse_args()
