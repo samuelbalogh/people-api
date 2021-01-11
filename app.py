@@ -155,7 +155,6 @@ class Person(Resource):
 
     def put(self, person_id):
         arguments = parser.parse_args()
-
         properties = arguments.get('properties')
 
         with db.begin() as connection:
@@ -169,7 +168,6 @@ class Person(Resource):
     def delete(self, person_id):
         with db.begin() as connection:
             res = connection.execute(SQL_DELETE_NODE, id=person_id)
-
 
 
 class People(Resource):
@@ -199,6 +197,8 @@ class People(Resource):
         already_in = set()
         sorted_results = []
 
+        # this is used for sorting people so that they are surrounded by
+        # people with whom they are connected.
         def get_connections_recursively(person, sorted_connections, ids, already_in):
             connections = person['edges']['in'] + person['edges']['out']
             if person['id'] not in already_in:
