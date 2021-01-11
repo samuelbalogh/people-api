@@ -202,7 +202,7 @@ class People(Resource):
         for item in unsorted_results:
             if item['id'] not in already_in:
                 sorted_results.append(item)
-                already_in.append(item)
+                already_in.add(item)
 
             # add their connections to the result set
             connections = item['edges']['in'] + item['edges']['out']
