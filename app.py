@@ -199,20 +199,20 @@ class People(Resource):
         already_in = set()
         sorted_results = []
 
-        for item in unsorted_results:
-            if item['id'] not in already_in:
-                sorted_results.append(item)
-                already_in.add(item['id'])
-
-            # add their connections to the result set
-            connections = item['edges']['in'] + item['edges']['out']
-
+        def get_connections_recursively(person, sorted_connections, ids, already_in):
+            connections = person['edges']['in'] + person['edges']['out']
+            if person['id'] not in already_in:
+                sorted_connections.append(ids[person['id']])
+                already_in.add(person['id'])
             for conn in connections:
-                if conn['id'] in already_in:
-                    continue
+                if conn['id'] not in already_in:
+                    sorted_connections.append(ids[conn['id']])
+                    already_in.add(conn['id'])
 
-                sorted_results.append(ids[conn['id']])
-                already_in.add(conn['id'])
+                    get_connections_recursively(ids[conn['id']], sorted_connections, ids, already_in)
+
+        for item in unsorted_results:
+            get_connections_recursively(item, sorted_results, ids, already_in)
 
         return sorted_results
 
