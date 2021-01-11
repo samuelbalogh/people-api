@@ -69,7 +69,7 @@ SQL_STATIC_CTE_PARTS = """
            SELECT people.id, people.properties, edges.label, edges.head_node, edges.tail_node FROM
                nodes LEFT OUTER JOIN people ON nodes.id = people.id LEFT OUTER JOIN edges ON edges.head_node = people.id
         ),
-        results AS (
+        nodes_of_outgoing_edges AS (
             SELECT
                 person_details_outgoing_edges.id,
                 person_details_outgoing_edges.properties::text AS props,
@@ -82,7 +82,7 @@ SQL_STATIC_CTE_PARTS = """
                 ) AS outgoing_edges
                 FROM person_details_outgoing_edges LEFT OUTER JOIN NODES ON person_details_outgoing_edges.head_node = nodes.id GROUP BY 1,2
         ),
-        results2 AS (
+        nodes_of_incoming_edges AS (
             SELECT
                 person_details_incoming_edges.id,
                 person_details_incoming_edges.properties::text AS props,
@@ -96,8 +96,8 @@ SQL_STATIC_CTE_PARTS = """
                 FROM person_details_incoming_edges LEFT OUTER JOIN NODES ON person_details_incoming_edges.tail_node = nodes.id GROUP BY 1,2
         ),
         graph AS (
-            SELECT results.id, results.props::json, json_build_object('out', outgoing_edges, 'in', incoming_edges) AS edges
-            FROM results, results2 WHERE results.id IS NOT NULL and results.id  = results2.id
+            SELECT nodes_of_outgoing_edges.id, nodes_of_outgoing_edges.props::json, json_build_object('out', outgoing_edges, 'in', incoming_edges) AS edges
+            FROM nodes_of_outgoing_edges, nodes_of_incoming_edges WHERE nodes_of_outgoing_edges.id IS NOT NULL and nodes_of_outgoing_edges.id  = nodes_of_incoming_edges.id
         )
         SELECT * FROM graph
 """
