@@ -7,7 +7,7 @@ from sqlalchemy import (
     create_engine,
     sql,
 )
-from uuid import UUID as pyUUID
+from uuid import UUID
 
 from flask import Flask, request, g
 from flask_restful import Resource, Api, reqparse
@@ -148,7 +148,7 @@ class Person(Resource):
         results = [dict(i) for i in res]
         for item in results:
             for key, value in item.items():
-                if isinstance(value, pyUUID):
+                if isinstance(value, UUID):
                     item[key] = str(value)
 
         return results[0]
@@ -186,24 +186,30 @@ class People(Resource):
             else:
                 res = connection.execute(SQL_GET_ALL_PEOPLE)
 
-        results = [dict(i) for i in res]
+        # This is so that people are more or less grouped together
+        # based on whether or not they have a connection
+        unsorted_results = []
+        ids = {}
+        for item in res:
+            item = dict(item)
+            item['id'] = str(item['id'])  # for serializing UUIDs
+            unsorted_results.append(item)
+            ids[str(item['id'])] = item
 
         already_in = set()
         sorted_results = []
 
-        ids = {str(item['id']): item for item in results}
-
-        for item in results:
-            for key, value in item.items():
-                if isinstance(value, pyUUID):
-                    item[key] = str(value)
-
+        for item in unsorted_results:
             if item['id'] not in already_in:
                 sorted_results.append(item)
-            for rel in item['edges']['in'] + item['edges']['out']:
-                if rel['id'] not in already_in:
-                    sorted_results.append(ids[rel['id']])
-                    already_in.add(rel['id'])
+
+            # add their connections to the result set
+            connections = item['edges']['in'] + item['edges']['out']
+
+            for conn in connections:
+                if conn['id'] not in already_in:
+                    sorted_results.append(ids[conn['id']])
+                    already_in.add(conn['id'])
 
         return sorted_results
 
