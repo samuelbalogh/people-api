@@ -208,9 +208,11 @@ class People(Resource):
             connections = item['edges']['in'] + item['edges']['out']
 
             for conn in connections:
-                if conn['id'] not in already_in:
-                    sorted_results.append(ids[conn['id']])
-                    already_in.add(conn['id'])
+                if conn['id'] in already_in:
+                    continue
+
+                sorted_results.append(ids[conn['id']])
+                already_in.add(conn['id'])
 
         return sorted_results
 
