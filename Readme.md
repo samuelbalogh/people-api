@@ -11,7 +11,7 @@ The idea was to write an app to **list friends** and note some details about the
 I wanted to use Postgres as a graph database because I wanted to see how terrible it could be to shoehorn a graph use-case into a relational database.   
 I think overall for a simple use-case like mine, it works surprisingly well.
 
-I would not use this in a production setting though (I felt like this had to be mentioned, lest this project is taken seriously by mistake).
+> ❗ I would not use this in a production setting though (I felt like this had to be mentioned, lest this project is taken seriously by mistake).
 
 The data structure is based on two tables: `nodes` and `edges` (it's how Martin Kleppman described this approach in the [DDIA book](https://www.oreilly.com/library/view/designing-data-intensive-applications/9781491903063/)).
 
