@@ -36,7 +36,7 @@ def after_request(response):
     header["Access-Control-Allow-Headers"] = "Content-Type"
     return response
 
-APP_SECRET = os.getenv('APP_SECRET') or 'jabberwocky'
+APP_SECRET = os.getenv('APP_SECRET')
 
 @app.before_request
 def check_api_key():
