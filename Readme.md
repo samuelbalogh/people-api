@@ -55,6 +55,12 @@ Foreign-key constraints:
 
 ## Limitations
 
+There are many.
+
+It's hard to answer arbitrary graph-traversal questions with SQL - but as I mentioned earlier, it would be possible with recursive CTEs.
+
+The performance is very good at the moment but that size of the dataset is trivial. It would be nice to do some load testing to figure out at what point this approach becomes untenable.
+
 I have shifted some logic the application layer, like sorting results, so that people are surrounded by people with whom they are connected with - this is done via a recursive depth-first traversal (I'm not sure if that would have been feasible in Postgres).
 
 
