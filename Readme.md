@@ -55,7 +55,6 @@ Foreign-key constraints:
 
 ## Limitations
 
-I have shifted some logic the application layer, like sorting results, so that people are surrounded by people with whom they are connected with. 
-I'm not sure if that would have been feasible in Postgres.
+I have shifted some logic the application layer, like sorting results, so that people are surrounded by people with whom they are connected with - this is done via a recursive depth-first traversal (I'm not sure if that would have been feasible in Postgres).
 
 
