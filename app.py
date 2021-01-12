@@ -9,8 +9,16 @@ from sqlalchemy import (
 )
 from uuid import UUID
 
-from flask import Flask, request, g
-from flask_restful import Resource, Api, reqparse
+from flask import (
+    Flask,
+    request,
+    g
+)
+from flask_restful import (
+    Resource,
+    Api,
+    reqparse
+)
 
 app = Flask(__name__)
 api = Api(app)
