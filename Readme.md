@@ -4,7 +4,7 @@ Backend for the **Hackathon** project written on the 9th January 2021.
 
 ## Concept
 
-The idea was to write an app to list friends and note some details about them, like when we talked last time, and how their kids are called (I always forget their names), and who their acquaintances are - the last requirement basically makes this a **super-simple social network**.
+The idea was to write an app to **list friends** and note some details about them, like when we talked last time, and how their kids are called (I always forget their names), and **who their acquaintances are** - the last requirement basically makes this a **super-simple social network**.
 
 ## Why Postgres?
 
