@@ -27,17 +27,17 @@ log = logging.getLogger(__name__)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 @app.before_request
-def before_request():
+def start_timer():
     g.start = time.time()
 
 @app.after_request
-def after_request(response):
+def measure_request_time(response):
     diff = round(time.time() - g.start, 4)
     log.info(f"request time: {diff} seconds")
     return response
 
 @app.after_request
-def after_request(response):
+def add_cors_headers(response):
     header = response.headers
     header['Access-Control-Allow-Origin'] = "*"
     header["Access-Control-Allow-Methods"] = "*"
