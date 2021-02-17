@@ -6,13 +6,21 @@ SELECT addNode('Marge Simpson');
 SELECT addNode('Mr Burns');
 SELECT addNode('Smithers');
 SELECT addNode('Barney');
+SELECT addNode('Moe');
+SELECT addNode('Chief Wiggam');
+SELECT addNode('Santas little helper');
 
 SELECT addEdge('Homer Simpson', 'Bart Simpson', 'father of');
+SELECT addEdge('Homer Simpson', 'Lisa Simpson', 'father of');
+SELECT addEdge('Homer Simpson', 'Maggie Simpson', 'father of');
 SELECT addEdge('Mr Burns', 'Homer Simpson', 'boss of');
 SELECT addEdge('Smithers', 'Mr Burns', 'assistant of');
+SELECT addEdge('Homer Simpson', 'Barney', 'friend of');
+SELECT addEdge('Homer Simpson', 'Moe', 'friend of');
 
 SELECT addEdge('Lisa Simpson', 'Bart Simpson', 'sibling');
 SELECT addEdge('Lisa Simpson', 'Maggie Simpson', 'sibling');
+SELECT addEdge('Santas little helper', 'Bart Simpson', 'dog of');
 
 
 WITH siblings AS (
@@ -37,28 +45,33 @@ WITH siblings AS (
       sib2.name != sib3.name AND
       sib1.name != sib3.name
 
-
+--- select paths up to 4 levels
 WITH rel_ids AS (
     -- relationships
-    SELECT nodes.id, nodes.properties->>'name' AS name, edges.label FROM nodes
-     LEFT JOIN edges
-     ON 
-      nodes.id = edges.tail_node
+    SELECT n1.properties->>'name' AS name1, edges.label, n2.properties->>'name' name2 FROM nodes n1
+     INNER JOIN edges
+      ON n1.id = edges.tail_node
+     INNER JOIN nodes n2
+      ON n2.id = edges.head_node
+
+      UNION
+
+    SELECT n1.properties->>'name' AS name1, concat('1 / ', edges.label), n2.properties->>'name' name2 FROM nodes n1
+     INNER JOIN edges
+      ON n1.id = edges.head_node
+     INNER JOIN nodes n2
+      ON n2.id = edges.tail_node
   )
     SELECT 
-      rel1.name, rel1.label, rel2.name, rel2.label, rel3.name
+      rel1.name1, rel1.label, rel1.name2, rel2.label, rel2.name2
     FROM rel_ids rel1
-      CROSS JOIN 
-        rel_ids AS rel2
-      CROSS JOIN 
-        rel_ids AS rel3
-    WHERE 
-      hasEdge(rel1.name, rel2.name) = 1 AND
-      hasEdge(rel2.name, rel3.name) = 1 AND
-      hasEdge(rel1.name, rel3.name) = 0 AND
-      rel1.name != rel2.name AND
-      rel2.name != rel3.name AND
-      rel1.name != rel3.name;
+        LEFT JOIN 
+          rel_ids AS rel2
+        ON 
+          rel1.name2 = rel2.name1 AND
+          rel1.name1 != rel2.name2
+     ORDER BY 1;
+
 
 -- select relationships
 WITH rels AS (
