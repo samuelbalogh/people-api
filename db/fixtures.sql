@@ -9,11 +9,15 @@ SELECT addNode('Barney');
 SELECT addNode('Moe');
 SELECT addNode('Chief Wiggam');
 SELECT addNode('Santas little helper');
+SELECT addNode('Bobo');
+
 
 SELECT addEdge('Homer Simpson', 'Bart Simpson', 'father of');
 SELECT addEdge('Homer Simpson', 'Lisa Simpson', 'father of');
 SELECT addEdge('Homer Simpson', 'Maggie Simpson', 'father of');
 SELECT addEdge('Mr Burns', 'Homer Simpson', 'boss of');
+SELECT addEdge('Mr Burns', 'Bobo', 'owner of');
+SELECT addEdge('Bobo', 'Mr Burns', 'teddy bear of');
 SELECT addEdge('Smithers', 'Mr Burns', 'assistant of');
 SELECT addEdge('Homer Simpson', 'Barney', 'friend of');
 SELECT addEdge('Homer Simpson', 'Moe', 'friend of');
@@ -71,6 +75,10 @@ WITH rel_ids AS (
           rel1.name2 = rel2.name1 AND
           rel1.name1 != rel2.name2
      ORDER BY 1;
+
+
+-- find all nodes which have a path to Homer
+-- TODO
 
 
 -- select relationships

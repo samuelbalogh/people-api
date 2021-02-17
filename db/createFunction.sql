@@ -31,6 +31,7 @@ CREATE OR REPLACE FUNCTION hasEdge(from_name text, to_name text) RETURNS int AS 
     (
        edges.tail_node = matched_nodes.node_ids[1] AND
        edges.head_node = matched_nodes.node_ids[2]
+    )
     OR
       (
        tail_node = node_ids[2] AND
