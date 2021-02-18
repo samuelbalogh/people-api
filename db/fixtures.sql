@@ -10,6 +10,7 @@ SELECT addNode('Moe');
 SELECT addNode('Chief Wiggam');
 SELECT addNode('Santas little helper');
 SELECT addNode('Bobo');
+SELECT addNode('Bobos creator');
 
 
 SELECT addEdge('Homer Simpson', 'Bart Simpson', 'father of');
@@ -17,10 +18,13 @@ SELECT addEdge('Homer Simpson', 'Lisa Simpson', 'father of');
 SELECT addEdge('Homer Simpson', 'Maggie Simpson', 'father of');
 SELECT addEdge('Mr Burns', 'Homer Simpson', 'boss of');
 SELECT addEdge('Mr Burns', 'Bobo', 'owner of');
+SELECT addEdge('Bobos creator', 'Bobo', 'creator of');
 SELECT addEdge('Bobo', 'Mr Burns', 'teddy bear of');
 SELECT addEdge('Smithers', 'Mr Burns', 'assistant of');
 SELECT addEdge('Homer Simpson', 'Barney', 'friend of');
 SELECT addEdge('Homer Simpson', 'Moe', 'friend of');
+
+SELECT addEdge('Marge Simpson', 'Homer Simpson', 'spouse of');
 
 SELECT addEdge('Lisa Simpson', 'Bart Simpson', 'sibling');
 SELECT addEdge('Lisa Simpson', 'Maggie Simpson', 'sibling');
@@ -78,10 +82,75 @@ WITH rel_ids AS (
 
 
 -- find all nodes which have a path to Homer
--- TODO
+-- direction counts here
+WITH RECURSIVE 
+  knows_homer(id, n, path, cycle) AS (
+    SELECT 
+        id, 1, ARRAY[id], false
+    FROM nodes WHERE properties->>'name' = 'Homer Simpson'
+
+      UNION 
+
+    SELECT 
+      edges.tail_node, 
+      n+1,
+      path || edges.tail_node,
+      edges.tail_node = ANY(path)
+    FROM edges JOIN knows_homer ON edges.head_node = knows_homer.id
+    WHERE NOT cycle
+  ),
+  knows_homer_details AS (
+    SELECT nodes.properties->>'name' as name, knows_homer.* FROM nodes, knows_homer WHERE nodes.id = knows_homer.id LIMIT 100
+  )
+  SELECT name, MIN(n) distance, MIN(path) path FROM knows_homer_details GROUP BY 1 ORDER BY 2
 
 
--- select relationships
+-- find all nodes which have a path to Homer
+-- direction does not count here
+WITH RECURSIVE 
+  knows_homer(id, n, path, cycle) AS (
+    SELECT 
+        id, 1, ARRAY[id], false
+    FROM nodes WHERE properties->>'name' = 'Homer Simpson'
+
+      UNION 
+
+    SELECT 
+      edges.tail_node, 
+      n+1,
+      path || edges.tail_node,
+      edges.tail_node = ANY(path)
+    FROM edges JOIN knows_homer ON edges.head_node = knows_homer.id
+    WHERE NOT cycle
+  ),
+  knows_homer2(id, n, path, cycle) AS (
+    SELECT 
+        id, 1, ARRAY[id], false
+    FROM nodes WHERE properties->>'name' = 'Homer Simpson'
+
+      UNION 
+
+    SELECT 
+      edges.head_node, 
+      n+1,
+      path || edges.head_node,
+      edges.head_node = ANY(path)
+    FROM edges JOIN knows_homer2 ON edges.tail_node = knows_homer2.id
+    WHERE NOT cycle
+  ),
+  knows_homer_details AS (
+    SELECT nodes.properties->>'name' as name, n, path FROM nodes, knows_homer WHERE nodes.id = knows_homer.id LIMIT 100
+  ),
+  knows_homer_details2 AS (
+    SELECT nodes.properties->>'name' as name, n, path FROM nodes, knows_homer2 WHERE nodes.id = knows_homer2.id LIMIT 100
+  ),
+  unioned AS (
+    SELECT * FROM knows_homer_details UNION SELECT * FROM knows_homer_details2 ORDER BY n
+  )
+  SELECT name, MIN(n) levels, MIN(path) path FROM unioned GROUP BY 1 ORDER BY 2
+  
+
+-- select direct relationships (level 1)
 WITH rels AS (
   SELECT tail_node, head_node, label FROM edges
 )
